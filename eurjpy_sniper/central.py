@@ -31,7 +31,7 @@ def central_status():
                 raw=frames[pair]; full=enrich(raw).dropna()
                 if len(full)<3: raise RuntimeError("Not enough indicator-ready candles")
                 entry_time=full.index[-1]; entry=float(raw.loc[entry_time,"open"]); settle(pair,entry_time,entry)
-                decision=decide(full.iloc[:-1],MIN_SIGNAL_SCORE); signal=decision["signal"]; opened=False
+                decision=decide(full.iloc[:-1],MIN_SIGNAL_SCORE,pair=pair); signal=decision["signal"]; opened=False
                 if signal in ("CALL","PUT") and decision["score"]>=MIN_SIGNAL_SCORE:
                     opened=open_trade(pair,signal,entry,PAPER_STAKE,full.index[-2],entry_time)
                 item.update(signal=signal,score=decision["score"],price=entry,feed="LIVE · Twelve Data",
