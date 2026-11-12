@@ -83,9 +83,10 @@ def backtest_pair(pair: str, candles: pd.DataFrame, days: int = DEFAULT_DAYS,
     if not isinstance(candles.index, pd.DatetimeIndex):
         raise ValueError("Candles must use a DatetimeIndex")
     x = candles.sort_index().copy()
-    end = x.index.max()
-    start = end - pd.Timedelta(days=days)
-    x = x.loc[x.index >= start]
+    now = pd.Timestamp.now(tz="UTC")
+    end = now
+    start = now - pd.Timedelta(days=days)
+    x = x.loc[(x.index >= start) & (x.index <= end)]
     if len(x) < WARMUP_BARS + 3:
         raise ValueError(f"Insufficient history: need at least {WARMUP_BARS + 3} one-minute candles")
     if x.index.has_duplicates:
@@ -127,8 +128,12 @@ def backtest_pair(pair: str, candles: pd.DataFrame, days: int = DEFAULT_DAYS,
         split_time = trades.iloc[split]["signal_time"] if split < len(trades) else None
     return {
         "pair": pair, "timeframe": "1min", "requested_days": days,
+        "window_start": start.isoformat(), "window_end": end.isoformat(),
         "data_start": x.index.min().isoformat(), "data_end": x.index.max().isoformat(),
+        "start_coverage_lag_hours": round((x.index.min() - start).total_seconds() / 3600, 2),
+        "end_data_age_hours": round((end - x.index.max()).total_seconds() / 3600, 2),
         "candles": int(len(x)), "warmup_bars": WARMUP_BARS,
+        "coverage_warning": ("Data does not span the full requested window; interpret results cautiously." if (x.index.min() - start) > pd.Timedelta(days=1) or (end - x.index.max()) > pd.Timedelta(days=3) else None),
         "threshold": int(threshold), "round_trip_cost_pips_assumption": float(cost_pips),
         "trade_count": int(len(trades)), "all": _metrics(trades),
         "in_sample_70pct": _metrics(train), "out_of_sample_30pct": _metrics(test),
