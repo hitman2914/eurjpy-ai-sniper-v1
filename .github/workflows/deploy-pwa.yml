@@ -20,6 +20,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Download EURJPY historical CSV into site
+        run: |
+          curl -fL --retry 3 --retry-delay 2 'https://cdn.jsdelivr.net/gh/getdata-finance/eurjpy-5m-ohlcv-forex-historical-data@main/EURJPY_5m.csv' -o sniper-app/EURJPY_5m.csv
+          test "$(wc -c < sniper-app/EURJPY_5m.csv)" -gt 100000
       - uses: actions/upload-pages-artifact@v3
         with:
           path: sniper-app
