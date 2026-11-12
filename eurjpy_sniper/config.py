@@ -3,12 +3,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# The same codebase can power an isolated deployment for each supported pair.
+# Central paper dashboard: EUR/JPY plus 20 additional FX pairs.
 SUPPORTED_PAIRS = {
     'EUR/JPY', 'CAD/JPY', 'GBP/JPY', 'GBP/AUD', 'CHF/JPY',
     'EUR/CHF', 'USD/JPY', 'GBP/USD', 'USD/CHF', 'USD/CAD',
     'GBP/CAD', 'AUD/CHF', 'GBP/CHF', 'EUR/AUD', 'AUD/CAD',
-    'EUR/CAD', 'AUD/JPY', 'CAD/CHF', 'EUR/GBP', 'AUD/USD'
+    'EUR/CAD', 'AUD/JPY', 'EUR/USD', 'CAD/CHF', 'EUR/GBP',
+    'AUD/USD'
 }
 
 PAIR = os.getenv('PAIR', 'EUR/JPY').strip().upper().replace('-', '/')
