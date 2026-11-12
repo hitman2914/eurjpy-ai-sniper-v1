@@ -3,7 +3,6 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
-# Set PAPER_DB_PATH per deployment to keep each pair's journal independent.
 DB = Path(os.getenv('PAPER_DB_PATH', str(Path(__file__).resolve().parent.parent / 'paper_trades.db')))
 
 
@@ -23,44 +22,47 @@ def init_db():
         c.execute("CREATE UNIQUE INDEX IF NOT EXISTS one_auto_trade_per_candle ON trades(signal_candle) WHERE signal_candle IS NOT NULL")
 
 
-def _iso_candle(candle_time):
-    t = candle_time.to_pydatetime() if hasattr(candle_time, 'to_pydatetime') else candle_time
+def _utc(value):
+    t = value.to_pydatetime() if hasattr(value, 'to_pydatetime') else value
     if t.tzinfo is None:
         t = t.replace(tzinfo=timezone.utc)
-    return t.astimezone(timezone.utc).isoformat()
+    return t.astimezone(timezone.utc)
+
+
+def _iso_candle(candle_time):
+    return _utc(candle_time).isoformat()
 
 
 def add_trade(side, entry, stake, candle_time):
     key = _iso_candle(candle_time)
-    expires = (datetime.fromisoformat(key) + timedelta(minutes=2)).isoformat()
+    expires = (_utc(candle_time) + timedelta(minutes=2)).isoformat()
     with con() as c:
         c.execute('INSERT INTO trades(opened,side,entry,expires,stake,status) VALUES(?,?,?,?,?,?)',
                   (datetime.now(timezone.utc).isoformat(), side, float(entry), expires, float(stake), 'OPEN'))
 
 
-def add_auto_trade(side, entry, stake, candle_time):
-    """Open at most one automatic paper position, and never stack open positions."""
-    key = _iso_candle(candle_time)
-    expires = (datetime.fromisoformat(key) + timedelta(minutes=1)).isoformat()
+def add_auto_trade(side, entry, stake, signal_candle, entry_candle=None):
+    """Record a simulated entry at the next candle's open; settle at the following candle's open."""
+    signal_key = _iso_candle(signal_candle)
+    entry_time = _utc(entry_candle if entry_candle is not None else signal_candle)
+    expires = (entry_time + timedelta(minutes=1)).isoformat()
     with con() as c:
         c.execute('BEGIN IMMEDIATE')
         if c.execute("SELECT 1 FROM trades WHERE status='OPEN' LIMIT 1").fetchone():
             return False
         cur = c.execute('INSERT OR IGNORE INTO trades(opened,side,entry,expires,stake,status,signal_candle) VALUES(?,?,?,?,?,?,?)',
-                        (datetime.now(timezone.utc).isoformat(), side, float(entry), expires, float(stake), 'OPEN', key))
+                        (datetime.now(timezone.utc).isoformat(), side, float(entry), expires, float(stake), 'OPEN', signal_key))
         return cur.rowcount == 1
 
 
 def settle_open(candle_time, price):
-    t = candle_time.to_pydatetime() if hasattr(candle_time, 'to_pydatetime') else candle_time
-    if t.tzinfo is None:
-        t = t.replace(tzinfo=timezone.utc)
-    t = t.astimezone(timezone.utc) + timedelta(minutes=1)
+    """Settle only when a later candle opens at or beyond the recorded expiry."""
+    now = _utc(candle_time)
     with con() as c:
         for r in c.execute("SELECT * FROM trades WHERE status='OPEN'").fetchall():
-            e = datetime.fromisoformat(r['expires'])
-            e = e.replace(tzinfo=timezone.utc) if e.tzinfo is None else e
-            if t < e:
+            expiry = datetime.fromisoformat(r['expires'])
+            expiry = expiry.replace(tzinfo=timezone.utc) if expiry.tzinfo is None else expiry
+            if now < expiry:
                 continue
             outcome = 'TIE' if float(price) == float(r['entry']) else 'WIN' if ((float(price) > float(r['entry'])) == (r['side'] == 'CALL')) else 'LOSS'
             pnl = 0.0 if outcome == 'TIE' else float(r['stake']) if outcome == 'WIN' else -float(r['stake'])
