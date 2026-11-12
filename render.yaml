@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: eurjpy-ai-sniper-v1
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: TWELVE_DATA_API_KEY
+        sync: false
+      - key: PAPER_STAKE
+        value: "10"
+      - key: MIN_SIGNAL_SCORE
+        value: "80"
