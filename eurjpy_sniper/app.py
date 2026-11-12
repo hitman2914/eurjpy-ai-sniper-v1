@@ -13,7 +13,7 @@ def create_app():
 
     @app.get('/')
     def home():
-        page = HTML.replace('EURJPY', BOT_NAME).replace('EUR/JPY', PAIR)
+        page = HTML.replace('EURJPY AI SNIPER V1', BOT_NAME + ' V1').replace('EURJPY', PAIR.replace('/', '')).replace('EUR/JPY', PAIR)
         return render_template_string(page)
 
     @app.get('/api/status')
