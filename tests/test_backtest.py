@@ -31,6 +31,17 @@ class BacktestTests(unittest.TestCase):
             self.assertEqual(len(df), 2)
             self.assertEqual(str(df.index.tz), "UTC")
 
+    def test_csv_loader_parses_dukascopy_epoch_milliseconds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "EURUSD.csv"
+            pd.DataFrame({
+                "timestamp": [1794441600000, 1794441660000],
+                "open": [1.1, 1.1], "high": [1.101, 1.102],
+                "low": [1.099, 1.099], "close": [1.1, 1.101],
+            }).to_csv(path, index=False)
+            df = load_ohlc_csv(path)
+            self.assertEqual(df.index[0], pd.Timestamp("2026-11-12T00:00:00Z"))
+
     def test_backtest_rejects_too_little_history(self):
         idx = pd.date_range("2026-01-01", periods=100, freq="min", tz="UTC")
         close = pd.Series(np.linspace(1.1, 1.11, len(idx)), index=idx)
