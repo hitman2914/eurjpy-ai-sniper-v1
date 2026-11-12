@@ -11,6 +11,9 @@ def fetch_candles(n=300):
  if 'values' not in j: raise RuntimeError(j.get('message','No market data'))
  d=pd.DataFrame(j['values']); d['datetime']=pd.to_datetime(d.datetime,utc=True)
  for k in ['open','high','low','close']: d[k]=pd.to_numeric(d[k],errors='coerce')
- d['volume']=pd.to_numeric(d.get('volume',0),errors='coerce').fillna(0); d=d.dropna().sort_values('datetime').set_index('datetime')[['open','high','low','close','volume']]; d=d[d.index<pd.Timestamp.now(tz='UTC').floor('min')]
+ # Forex feeds may omit volume; use a neutral zero column when absent.
+ if 'volume' in d.columns: d['volume']=pd.to_numeric(d['volume'],errors='coerce').fillna(0)
+ else: d['volume']=0.0
+ d=d.dropna(subset=['open','high','low','close']).sort_values('datetime').set_index('datetime')[['open','high','low','close','volume']]; d=d[d.index<pd.Timestamp.now(tz='UTC').floor('min')]
  if len(d)<210 or (pd.Timestamp.now(tz='UTC')-d.index[-1]).total_seconds()>180: raise RuntimeError('Insufficient or stale completed-candle data')
  _cache.update(at=time.time(),df=d.tail(n)); return d.tail(n),'LIVE DATA — Twelve Data'
