@@ -36,8 +36,13 @@ def open_trade(pair,side,entry,stake,signal_time,entry_time):
         return cur.rowcount==1
 def summary(pair):
     with _con() as c:
-        rows=[dict(r) for r in c.execute("SELECT * FROM pair_trades WHERE pair=? ORDER BY id DESC LIMIT 30",(pair,))]
-    done=[r for r in rows if r["status"]=="SETTLED"]
-    wins=sum(r["outcome"]=="WIN" for r in done); losses=sum(r["outcome"]=="LOSS" for r in done); pnl=round(sum(r["pnl"] or 0 for r in done),2); n=wins+losses
-    return {"trades":len(done),"wins":wins,"losses":losses,"win_rate":round(wins/n*100,1) if n else None,
-    "net_pnl":pnl,"paper_balance":round(1000+pnl,2),"open_trades":sum(r["status"]=="OPEN" for r in rows),"history":rows[:10]}
+        rows=[dict(r) for r in c.execute("SELECT * FROM pair_trades WHERE pair=? ORDER BY id DESC LIMIT 10",(pair,))]
+        agg=c.execute("""SELECT COUNT(*) AS trades,
+            SUM(CASE WHEN outcome='WIN' THEN 1 ELSE 0 END) AS wins,
+            SUM(CASE WHEN outcome='LOSS' THEN 1 ELSE 0 END) AS losses,
+            COALESCE(SUM(pnl),0) AS net_pnl
+            FROM pair_trades WHERE pair=? AND status='SETTLED'""",(pair,)).fetchone()
+        opened=c.execute("SELECT COUNT(*) FROM pair_trades WHERE pair=? AND status='OPEN'",(pair,)).fetchone()[0]
+    wins=agg["wins"] or 0; losses=agg["losses"] or 0; n=wins+losses; pnl=round(agg["net_pnl"],2)
+    return {"trades":agg["trades"],"wins":wins,"losses":losses,"win_rate":round(wins/n*100,1) if n else None,
+    "net_pnl":pnl,"paper_balance":round(1000+pnl,2),"open_trades":opened,"history":rows}
