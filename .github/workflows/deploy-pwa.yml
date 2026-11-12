@@ -22,7 +22,7 @@ jobs:
       - uses: actions/configure-pages@v5
       - name: Download EURJPY historical CSV into site
         run: |
-          curl -fL --retry 3 --retry-delay 2 'https://cdn.jsdelivr.net/gh/getdata-finance/eurjpy-5m-ohlcv-forex-historical-data@main/EURJPY_5m.csv' -o sniper-app/EURJPY_5m.csv
+          curl -fL --retry 3 --retry-delay 2 'https://cdn.jsdelivr.net/gh/getdata-finance/eurjpy-5m-ohlcv-forex-historical-data@main/EURJPY_5m.csv' -o sniper-app/EURJPY_5m.csv || curl -fL --retry 3 --retry-delay 2 'https://raw.githubusercontent.com/getdata-finance/eurjpy-5m-ohlcv-forex-historical-data/main/EURJPY_5m.csv' -o sniper-app/EURJPY_5m.csv
           test "$(wc -c < sniper-app/EURJPY_5m.csv)" -gt 100000\n          head -n 1 sniper-app/EURJPY_5m.csv | grep -qi 'open.*high.*low.*close'\n      - name: Validate dashboard JavaScript\n        run: node --check sniper-app/app.js
       - uses: actions/upload-pages-artifact@v3
         with:
