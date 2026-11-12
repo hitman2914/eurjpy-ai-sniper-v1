@@ -9,7 +9,13 @@ import json
 import sys
 from pathlib import Path
 
-# When invoked as ``python scripts/backtest_21_pairs.py``, Python puts the\n# scripts directory (not the repository root) on sys.path. Add the root so\n# the local eurjpy_sniper package can be imported in GitHub Actions.\nREPO_ROOT = Path(__file__).resolve().parents[1]\nif str(REPO_ROOT) not in sys.path:\n    sys.path.insert(0, str(REPO_ROOT))\n\nfrom eurjpy_sniper.backtest import run_universe, write_report
+# Running this file directly puts scripts/ rather than the repo root on sys.path.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from eurjpy_sniper.backtest import run_universe, write_report
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -24,6 +30,7 @@ def main():
     write_report(report, args.output_dir)
     print(json.dumps({k: v for k, v in report.items() if k != "results"}, indent=2))
     print(f"Full report: {Path(args.output_dir) / 'summary.json'}")
+
 
 if __name__ == "__main__":
     main()
