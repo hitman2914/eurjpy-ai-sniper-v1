@@ -2,6 +2,11 @@ name: Free 90-day 21-pair FX backtest
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/backtest_21_pairs.py'
+      - '.github/workflows/backtest-90d.yml'
 
 permissions:
   contents: read
