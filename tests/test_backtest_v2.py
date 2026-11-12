@@ -7,7 +7,7 @@ class V2ResearchTests(unittest.TestCase):
     def test_config_grid_has_three_distinct_horizons(self):
         self.assertEqual([c["hold"] for c in CONFIGS],[5,10,15])
     def test_v2_returns_all_configs_without_lookahead_error(self):
-        n=1200
+        n=1800
         idx=pd.date_range(end=pd.Timestamp.now(tz="UTC").floor("min"),periods=n,freq="min")
         close=pd.Series(1.1+np.arange(n)*0.000002+np.sin(np.arange(n)/15)*0.0001,index=idx)
         df=pd.DataFrame({"open":close.shift(1).fillna(close),"high":close+0.00005,
