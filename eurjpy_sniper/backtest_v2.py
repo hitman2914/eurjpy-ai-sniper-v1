@@ -12,7 +12,7 @@ from .backtest import load_ohlc_csv, _metrics, pip_size
 from .config import SUPPORTED_PAIRS
 from .indicators import enrich
 
-WARMUP = 250
+WARMUP = 1300
 CONFIGS = [
     {"name": "trend_adx18_hold5", "adx_min": 18.0, "hold": 5, "session": "all"},
     {"name": "trend_adx22_hold10", "adx_min": 22.0, "hold": 10, "session": "london_ny"},
@@ -20,12 +20,12 @@ CONFIGS = [
 ]
 
 def _higher_timeframe(candles: pd.DataFrame) -> pd.Series:
-    bars = candles[["open","high","low","close"]].resample("5min", label="right", closed="right").agg(
+    bars = candles[["open","high","low","close"]].resample("5min", label="right", closed="left").agg(
         {"open":"first","high":"max","low":"min","close":"last"}).dropna()
     bars["ema50"] = bars.close.ewm(span=50, adjust=False).mean()
     bars["ema200"] = bars.close.ewm(span=200, adjust=False).mean()
     # A 5m bar timestamp denotes its close; only map already closed bars to 1m signal times.
-    return (bars.ema50 > bars.ema200).rename("htf_bull")
+    return pd.DataFrame({"htf_bull": bars.ema50 > bars.ema200, "htf_ready": bars.ema200.notna()}, index=bars.index)
 
 def _signals(candles: pd.DataFrame, adx_min: float) -> pd.Series:
     x = enrich(candles)
@@ -35,7 +35,7 @@ def _signals(candles: pd.DataFrame, adx_min: float) -> pd.Series:
         htf.reset_index().rename(columns={htf.index.name or "index":"time"}).sort_values("time"),
         on="time", direction="backward", allow_exact_matches=True
     )
-    bull_htf = aligned.htf_bull.fillna(False).to_numpy()
+    bull_htf = aligned.htf_bull.fillna(False).to_numpy()\n    htf_ready = aligned.htf_ready.fillna(False).to_numpy()
     prev = x.close.shift(1)
     pullback_up = (prev <= x.ema20.shift(1)) & (x.close > x.ema20)
     pullback_dn = (prev >= x.ema20.shift(1)) & (x.close < x.ema20)
