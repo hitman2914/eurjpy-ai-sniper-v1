@@ -2,7 +2,8 @@ from .strategies import evaluate_strategies
 from .config import PAIR
 
 
-def decide(x, threshold=80):
+def decide(x, threshold=80, pair=None):
+    pair = pair or PAIR
     c = x.iloc[-1]
     ss = evaluate_strategies(x)
     votes = [s['side'] for s in ss if s['side'] in ('CALL', 'PUT')]
@@ -15,7 +16,7 @@ def decide(x, threshold=80):
     score = min(100, 40 + max(a, b) * 12 + (8 if direction == trend else 0) + (8 if direction == mom else 0) + (8 if vol else 0))
     ok = max(a, b) >= 2 and (direction == trend or direction == mom) and vol
     reasons = [
-        f'Market Scout: {PAIR} completed 1m candle {x.index[-1]}',
+        f'Market Scout: {pair} completed 1m candle {x.index[-1]}',
         f'Trend Agent: {trend}',
         f'Momentum Agent: {mom}; RSI {c.rsi:.1f}',
         'Price Action Agent: breakout and sweep/rejection checks completed',
