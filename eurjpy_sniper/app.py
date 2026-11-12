@@ -29,7 +29,8 @@ def create_app():
             # signal candle's next-candle entry reference.
             entry_candle_time = full.index[-1]
             entry_price = float(raw.loc[entry_candle_time, 'open'])
-            settle_open(entry_candle_time, entry_price)
+            if live:
+                settle_open(entry_candle_time, entry_price)
             signal_data = full.iloc[:-1]
             d = decide(signal_data, MIN_SIGNAL_SCORE)
             d['price'] = entry_price
