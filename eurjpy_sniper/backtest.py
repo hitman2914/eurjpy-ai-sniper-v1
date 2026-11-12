@@ -33,7 +33,15 @@ def load_ohlc_csv(path: str | Path) -> pd.DataFrame:
     required = ("open", "high", "low", "close")
     if any(k not in cols for k in required):
         raise ValueError("CSV needs open, high, low, close columns")
-    out = pd.DataFrame(index=pd.to_datetime(df[time_col], utc=True, errors="coerce"))
+    raw_time = df[time_col]
+    # Dukascopy CSV exports epoch milliseconds; ordinary user CSVs may use ISO strings.
+    numeric_time = pd.to_numeric(raw_time, errors="coerce")
+    if numeric_time.notna().all():
+        unit = "ms" if numeric_time.abs().median() > 100_000_000_000 else "s"
+        parsed_time = pd.to_datetime(numeric_time, unit=unit, utc=True, errors="coerce")
+    else:
+        parsed_time = pd.to_datetime(raw_time, utc=True, errors="coerce")
+    out = pd.DataFrame(index=parsed_time)
     for key in required:
         out[key] = pd.to_numeric(df[cols[key]], errors="coerce").to_numpy()
     out["volume"] = pd.to_numeric(df[cols["volume"]], errors="coerce").fillna(0).to_numpy() if "volume" in cols else 0.0

@@ -1,0 +1,67 @@
+name: Free 90-day 21-pair FX backtest
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download-and-backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Set historical window
+        id: dates
+        run: |
+          echo "from=$(date -u -d '90 days ago' +%F)" >> "$GITHUB_OUTPUT"
+          echo "to=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download free Dukascopy 1-minute candles
+        env:
+          START_DATE: ${{ steps.dates.outputs.from }}
+          END_DATE: ${{ steps.dates.outputs.to }}
+        run: |
+          set -e
+          mkdir -p data/backtest download
+          symbols="eurjpy cadjpy gbpjpy gbpaud chfjpy eurchf usdjpy gbpusd usdchf usdcad gbpcad audchf gbpchf euraud audcad eurcad audjpy eurusd cadchf eurgbp audusd"
+          for symbol in $symbols; do
+            echo "Downloading $symbol from $START_DATE to $END_DATE"
+            if npx --yes dukascopy-node@latest -i "$symbol" -from "$START_DATE" -to "$END_DATE" -t m1 -f csv; then
+              file=$(find download -type f -iname "${symbol}-m1-bid-*.csv" -print -quit || true)
+              if [ -n "$file" ]; then
+                cp "$file" "data/backtest/${symbol^^}.csv"
+              else
+                echo "WARNING: no CSV found for $symbol"
+              fi
+            else
+              echo "WARNING: download failed for $symbol; continuing"
+            fi
+          done
+          echo "Downloaded files:"
+          ls -lh data/backtest || true
+      - name: Run 90-day backtest
+        run: |
+          python scripts/backtest_21_pairs.py --data-dir data/backtest --output-dir backtest_output --days 90 --threshold 80 --cost-pips 2.0
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: fx-21-pair-90-day-backtest
+          path: backtest_output/
+          if-no-files-found: error
+          retention-days: 30
