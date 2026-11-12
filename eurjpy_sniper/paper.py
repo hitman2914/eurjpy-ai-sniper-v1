@@ -24,7 +24,7 @@ def _iso_candle(candle_time):
 
 def add_trade(side,entry,stake,candle_time):
  key=_iso_candle(candle_time)
- expires=(datetime.fromisoformat(key)+timedelta(minutes=1)).isoformat()
+ expires=(datetime.fromisoformat(key)+timedelta(minutes=2)).isoformat()
  with con() as c:
   c.execute('INSERT INTO trades(opened,side,entry,expires,stake,status) VALUES(?,?,?,?,?,?)',
    (datetime.now(timezone.utc).isoformat(),side,float(entry),expires,float(stake),'OPEN'))
