@@ -6,8 +6,10 @@ Required columns: datetime, open, high, low, close; volume is optional.
 """
 import argparse
 import json
+import sys
 from pathlib import Path
-from eurjpy_sniper.backtest import run_universe, write_report
+
+# When invoked as ``python scripts/backtest_21_pairs.py``, Python puts the\n# scripts directory (not the repository root) on sys.path. Add the root so\n# the local eurjpy_sniper package can be imported in GitHub Actions.\nREPO_ROOT = Path(__file__).resolve().parents[1]\nif str(REPO_ROOT) not in sys.path:\n    sys.path.insert(0, str(REPO_ROOT))\n\nfrom eurjpy_sniper.backtest import run_universe, write_report
 
 def main():
     parser = argparse.ArgumentParser()
